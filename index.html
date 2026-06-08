@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VibeFlix - Movie Search</title>
+
     <style>
       * {
         box-sizing: border-box;
@@ -12,35 +13,39 @@
       }
 
       body {
-        background-color: #0f0f0f;
-        color: #ffffff;
-        font-family: "Segoe UI", sans-serif;
+        background: #0f0f0f;
+        color: #fff;
+        font-family: "Segoe UI", Arial, sans-serif;
         min-height: 100vh;
       }
 
       header {
-        background-color: #141414;
+        background: #141414;
         padding: 1.2rem 2rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
         border-bottom: 2px solid #e50914;
+        gap: 1rem;
+        flex-wrap: wrap;
       }
 
       header h1 {
         color: #e50914;
         font-size: 1.8rem;
         letter-spacing: 2px;
+        font-weight: 800;
       }
 
       .search-bar {
         display: flex;
         gap: 0.5rem;
+        align-items: center;
       }
 
       .search-bar input {
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
+        padding: 0.55rem 1rem;
+        border-radius: 6px;
         border: none;
         background: #2a2a2a;
         color: #fff;
@@ -54,14 +59,15 @@
       }
 
       .search-bar button {
-        padding: 0.5rem 1.2rem;
+        padding: 0.55rem 1.2rem;
         background: #e50914;
         color: #fff;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
         font-size: 1rem;
         transition: background 0.2s;
+        font-weight: 700;
       }
 
       .search-bar button:hover {
@@ -87,49 +93,57 @@
 
       .movie-card {
         background: #1a1a1a;
-        border-radius: 8px;
+        border-radius: 10px;
         overflow: hidden;
         transition:
-          transform 0.2s,
-          box-shadow 0.2s;
-        cursor: pointer;
+          transform 0.18s,
+          box-shadow 0.18s;
+        cursor: default;
+        border: 1px solid rgba(255, 255, 255, 0.04);
       }
 
       .movie-card:hover {
         transform: translateY(-6px);
-        box-shadow: 0 8px 24px rgba(229, 9, 20, 0.3);
+        box-shadow: 0 10px 30px rgba(229, 9, 20, 0.25);
       }
 
       .movie-card img {
         width: 100%;
         display: block;
-        aspect-ratio: 2/3;
+        aspect-ratio: 2 / 3;
         object-fit: cover;
         background: #2a2a2a;
       }
 
       .movie-info {
-        padding: 0.6rem 0.75rem 0.85rem;
+        padding: 0.7rem 0.85rem 0.95rem;
       }
 
       .movie-title {
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin-bottom: 0.3rem;
+        font-size: 0.92rem;
+        font-weight: 650;
+        margin-bottom: 0.35rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        line-height: 1.2;
       }
 
       .movie-rating {
-        font-size: 0.82rem;
+        font-size: 0.85rem;
         color: #f5c518;
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
       }
 
       .movie-rating span {
         color: #aaa;
         font-size: 0.78rem;
-        margin-left: 4px;
+      }
+
+      .muted {
+        color: #888;
       }
     </style>
   </head>
@@ -142,7 +156,7 @@
           type="text"
           placeholder="Search for movies..."
         />
-        <button id="searchBtn">Search</button>
+        <button id="searchBtn" type="button">Search</button>
       </div>
     </header>
 
@@ -152,7 +166,10 @@
     </main>
 
     <script>
-      const API_KEY = "YOUR_TMDB_API_KEY";
+      // NOTE: Putting a TMDb API key in frontend JS exposes it publicly.
+      // For production, proxy requests through your backend or use TMDb's recommended auth flow.
+      const API_KEY = "aa2cbaf25fa675ca83cf1262915dd3fc";
+
       const BASE_URL = "https://api.themoviedb.org/3";
       const IMG_URL = "https://image.tmdb.org/t/p/w342";
       const PLACEHOLDER =
@@ -164,9 +181,21 @@
       const statusEl = document.getElementById("status");
 
       async function searchMovies(query) {
-        const url = `${BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(query)}`;
+        const url =
+          `${BASE_URL}/search/movie?api_key=${encodeURIComponent(API_KEY)}` +
+          `&query=${encodeURIComponent(query)}`;
+
         const res = await fetch(url);
-        if (!res.ok) throw new Error("Request failed");
+        if (!res.ok) {
+          // Try to read any error message TMDb returns
+          let msg = `Request failed (${res.status})`;
+          try {
+            const errData = await res.json();
+            if (errData && errData.status_message) msg = errData.status_message;
+          } catch (_) {}
+          throw new Error(msg);
+        }
+
         const data = await res.json();
         return data.results || [];
       }
@@ -181,27 +210,31 @@
 
         statusEl.textContent = `${movies.length} result(s) found.`;
 
-        movies.forEach(({ title, poster_path, vote_average }) => {
+        for (const movie of movies) {
+          const { title, poster_path, vote_average } = movie;
+
           const card = document.createElement("div");
           card.className = "movie-card";
+
+          const rating =
+            typeof vote_average === "number" ? vote_average.toFixed(1) : "N/A";
 
           card.innerHTML = `
           <img
             src="${poster_path ? IMG_URL + poster_path : PLACEHOLDER}"
-            alt="${title}"
+            alt="${title || "Movie"}"
             loading="lazy"
           />
           <div class="movie-info">
-            <div class="movie-title" title="${title}">${title}</div>
+            <div class="movie-title" title="${title || ""}">${title || "Untitled"}</div>
             <div class="movie-rating">
-              &#9733; ${vote_average ? vote_average.toFixed(1) : "N/A"}
-              <span>/ 10</span>
+              ★ ${rating} <span>/ 10</span>
             </div>
           </div>
         `;
 
           resultsEl.appendChild(card);
-        });
+        }
       }
 
       async function handleSearch() {
@@ -215,9 +248,8 @@
           const movies = await searchMovies(query);
           renderMovies(movies);
         } catch (err) {
-          statusEl.textContent =
-            "Something went wrong. Check your API key or connection.";
           console.error(err);
+          statusEl.textContent = "Something went wrong. Kindly wait.";
         }
       }
 
