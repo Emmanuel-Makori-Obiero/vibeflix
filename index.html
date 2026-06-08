@@ -98,16 +98,6 @@
         min-height: 1.5rem;
       }
 
-      .section-title {
-        font-size: 1.3rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
-        color: #e50914;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-
-      /* Loading Spinner Styles */
       .spinner-container {
         display: none;
         justify-content: center;
@@ -163,7 +153,6 @@
         animation: fadeInUp 0.6s ease forwards;
       }
 
-      /* Stagger animation for each card */
       .movie-card:nth-child(1) {
         animation-delay: 0.05s;
       }
@@ -257,11 +246,6 @@
         font-size: 0.78rem;
       }
 
-      .muted {
-        color: #888;
-      }
-
-      /* Responsive adjustments */
       @media (max-width: 768px) {
         header {
           flex-direction: column;
@@ -309,90 +293,11 @@
     </main>
 
     <script>
-      // NOTE: Putting a TMDb API key in frontend JS exposes it publicly.
-      // For production, proxy requests through your backend or use TMDb's recommended auth flow.
       const API_KEY = "aa2cbaf25fa675ca83cf1262915dd3fc";
-
       const BASE_URL = "https://api.themoviedb.org/3";
       const IMG_URL = "https://image.tmdb.org/t/p/w342";
       const PLACEHOLDER =
-        "https://via.placeholder.com/342x513/1a1a1a/888?text=No+Poster";
-
-      // Default featured movies template data
-      const DEFAULT_MOVIES = [
-        {
-          id: 1,
-          title: "Inception",
-          poster_path: "/9gk7adHYeDMPS6QcYLzAGvwhJ5J.jpg",
-          vote_average: 8.8,
-        },
-        {
-          id: 2,
-          title: "The Dark Knight",
-          poster_path: "/1hqwGsOCSfepDMXVqC19UO1nK2n.jpg",
-          vote_average: 9.0,
-        },
-        {
-          id: 3,
-          title: "Interstellar",
-          poster_path: "/gEU2QniE6E77NI6lCu244UZsbGa.jpg",
-          vote_average: 8.6,
-        },
-        {
-          id: 4,
-          title: "Pulp Fiction",
-          poster_path: "/dM2w364MScsjFjitE5sYGaP40gn.jpg",
-          vote_average: 8.9,
-        },
-        {
-          id: 5,
-          title: "Forrest Gump",
-          poster_path: "/clnqb4fck6DNDc0r8zf8Jw7Qvsd.jpg",
-          vote_average: 8.8,
-        },
-        {
-          id: 6,
-          title: "The Matrix",
-          poster_path: "/lJwSvq305C2p5PVkjLmeshow5Ac.jpg",
-          vote_average: 8.7,
-        },
-        {
-          id: 7,
-          title: "Gladiator",
-          poster_path: "/x2RS0WyE4csWytkJ0l0r5HNsaAh.jpg",
-          vote_average: 8.5,
-        },
-        {
-          id: 8,
-          title: "The Shawshank Redemption",
-          poster_path: "/q6y0aVAvQSpjlEJsBl9SPZKTYa5.jpg",
-          vote_average: 9.3,
-        },
-        {
-          id: 9,
-          title: "Avatar",
-          poster_path: "/jRXYjXNq0Cs2qQAGnTPuZpg9CAa.jpg",
-          vote_average: 7.8,
-        },
-        {
-          id: 10,
-          title: "The Avengers",
-          poster_path: "/RYMX2ub5dvw9aPyc9QXax0Xw0Ph.jpg",
-          vote_average: 8.0,
-        },
-        {
-          id: 11,
-          title: "Oppenheimer",
-          poster_path: "/8Gxv8gSFCU0XGDykEGClnunen5b.jpg",
-          vote_average: 8.1,
-        },
-        {
-          id: 12,
-          title: "Dune",
-          poster_path: "/lJwSvq305C2p5PVkjLmeshow5Ac.jpg",
-          vote_average: 7.9,
-        },
-      ];
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='342' height='513' viewBox='0 0 342 513'%3E%3Crect width='342' height='513' fill='%232a2a2a'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23888' font-family='sans-serif' font-size='18'%3ENo Poster%3C/text%3E%3C/svg%3E";
 
       const searchInput = document.getElementById("searchInput");
       const searchBtn = document.getElementById("searchBtn");
@@ -400,18 +305,47 @@
       const statusEl = document.getElementById("status");
       const spinnerContainer = document.getElementById("spinnerContainer");
 
-      async function searchMovies(query) {
+      function getPosterUrl(posterPath) {
+        if (!posterPath) return PLACEHOLDER;
+        if (posterPath.startsWith("http")) return posterPath;
+        return `${IMG_URL}${posterPath.startsWith("/") ? posterPath : `/${posterPath}`}`;
+      }
+
+      function handlePosterError(img) {
+        img.onerror = null;
+        img.src = PLACEHOLDER;
+      }
+
+      async function fetchPopularMovies() {
         const url =
-          `${BASE_URL}/search/movie?api_key=${encodeURIComponent(API_KEY)}` +
-          `&query=${encodeURIComponent(query)}`;
+          `${BASE_URL}/movie/popular?api_key=${encodeURIComponent(API_KEY)}` +
+          "&language=en-US&page=1";
 
         const res = await fetch(url);
         if (!res.ok) {
-          // Try to read any error message TMDb returns
           let msg = `Request failed (${res.status})`;
           try {
             const errData = await res.json();
-            if (errData && errData.status_message) msg = errData.status_message;
+            if (errData?.status_message) msg = errData.status_message;
+          } catch (_) {}
+          throw new Error(msg);
+        }
+
+        const data = await res.json();
+        return data.results || [];
+      }
+
+      async function searchMovies(query) {
+        const url =
+          `${BASE_URL}/search/movie?api_key=${encodeURIComponent(API_KEY)}` +
+          `&query=${encodeURIComponent(query)}&language=en-US`;
+
+        const res = await fetch(url);
+        if (!res.ok) {
+          let msg = `Request failed (${res.status})`;
+          try {
+            const errData = await res.json();
+            if (errData?.status_message) msg = errData.status_message;
           } catch (_) {}
           throw new Error(msg);
         }
@@ -429,11 +363,9 @@
           return;
         }
 
-        if (isSearch) {
-          statusEl.textContent = `${movies.length} result(s) found.`;
-        } else {
-          statusEl.textContent = "Featured movies";
-        }
+        statusEl.textContent = isSearch
+          ? `${movies.length} result(s) found.`
+          : "Featured movies";
 
         for (const movie of movies) {
           const { title, poster_path, vote_average } = movie;
@@ -446,19 +378,22 @@
             typeof vote_average === "number" ? vote_average.toFixed(1) : "N/A";
 
           card.innerHTML = `
-          <img
-            src="${poster_path ? IMG_URL + poster_path : PLACEHOLDER}"
-            alt="${title || "Movie"}"
-            loading="lazy"
-            onerror="this.src='${PLACEHOLDER}'"
-          />
-          <div class="movie-info">
-            <div class="movie-title" title="${title || ""}">${title || "Untitled"}</div>
-            <div class="movie-rating">
-              ★ ${rating} <span>/ 10</span>
+            <img
+              src="${getPosterUrl(poster_path)}"
+              alt="${title || "Movie"}"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            />
+            <div class="movie-info">
+              <div class="movie-title" title="${title || ""}">${title || "Untitled"}</div>
+              <div class="movie-rating">
+                ★ ${rating} <span>/ 10</span>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+
+          const img = card.querySelector("img");
+          img.addEventListener("error", () => handlePosterError(img));
 
           resultsEl.appendChild(card);
         }
@@ -485,14 +420,27 @@
         }
       }
 
-      // Event listeners
+      async function loadFeaturedMovies() {
+        spinnerContainer.classList.add("active");
+        statusEl.textContent = "";
+
+        try {
+          const movies = await fetchPopularMovies();
+          renderMovies(movies, false);
+        } catch (err) {
+          console.error(err);
+          statusEl.textContent =
+            "Could not load movies. Use a local server instead of opening the file directly.";
+          spinnerContainer.classList.remove("active");
+        }
+      }
+
       searchBtn.addEventListener("click", handleSearch);
       searchInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") handleSearch();
       });
 
-      // Render default featured movies immediately
-      renderMovies(DEFAULT_MOVIES, false);
+      loadFeaturedMovies();
     </script>
   </body>
 </html>
